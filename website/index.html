@@ -1,0 +1,1074 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101923">
+  <title>Adaptive CPU Scheduler | Project Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #101923;
+      --panel: #182531;
+      --panel-soft: #1d2c39;
+      --border: #2b3c49;
+      --text: #edf4f5;
+      --muted: #a7b7bf;
+      --mint: #78e0bd;
+      --blue: #80bfff;
+      --gold: #ffd27b;
+      --rose: #ff9a9a;
+      --shadow: 0 16px 40px rgb(0 0 0 / 18%);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 75% -20%, rgb(67 131 137 / 22%), transparent 42rem),
+        var(--page);
+      color: var(--text);
+      font: 16px/1.6 "Segoe UI", Arial, sans-serif;
+    }
+    a { color: var(--mint); }
+    button, select, input { font: inherit; }
+    button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible {
+      outline: 3px solid var(--gold);
+      outline-offset: 3px;
+    }
+    .wrap { width: min(1120px, calc(100% - 36px)); margin-inline: auto; }
+    .topbar {
+      position: sticky;
+      z-index: 3;
+      top: 0;
+      border-bottom: 1px solid rgb(255 255 255 / 8%);
+      background: rgb(16 25 35 / 92%);
+      backdrop-filter: blur(14px);
+    }
+    .nav {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand { color: var(--text); font-weight: 750; text-decoration: none; }
+    .brand span { color: var(--mint); }
+    .nav-links { display: flex; flex-wrap: wrap; gap: 18px; }
+    .nav-links a { color: var(--muted); font-size: .9rem; text-decoration: none; }
+    .nav-links a:hover { color: var(--text); }
+    main { padding-bottom: 64px; }
+    .hero { padding: 72px 0 42px; }
+    .eyebrow {
+      color: var(--mint);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    h1 { max-width: 800px; margin: 12px 0 16px; font-size: clamp(2.2rem, 6vw, 4.2rem); line-height: 1.08; letter-spacing: -.04em; }
+    h2 { margin: 0 0 10px; font-size: clamp(1.45rem, 3vw, 2rem); letter-spacing: -.02em; }
+    h3 { margin: 0 0 8px; font-size: 1.08rem; }
+    p { margin: 0 0 14px; }
+    .lead { max-width: 760px; color: var(--muted); font-size: 1.12rem; }
+    .identity { color: var(--muted); font-size: .92rem; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 9px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--text);
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .button.primary { border-color: var(--mint); background: var(--mint); color: #0c211d; }
+    .button:hover { filter: brightness(1.08); }
+    section { padding: 30px 0; scroll-margin-top: 80px; }
+    .section-intro { max-width: 760px; margin-bottom: 20px; color: var(--muted); }
+    .panel {
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgb(29 44 57 / 92%), rgb(24 37 49 / 96%));
+      box-shadow: var(--shadow);
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+      align-items: end;
+      gap: 14px;
+    }
+    label { display: grid; gap: 6px; color: var(--muted); font-size: .86rem; font-weight: 650; }
+    select, input {
+      width: 100%;
+      min-height: 44px;
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: #101923;
+      color: var(--text);
+    }
+    .control-button { min-width: 115px; }
+    .sim-note, .small-note { color: var(--muted); font-size: .88rem; }
+    .result-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 22px 0 14px;
+    }
+    .classification {
+      max-width: 480px;
+      padding: 12px 15px;
+      border: 1px solid rgb(120 224 189 / 35%);
+      border-radius: 11px;
+      background: rgb(120 224 189 / 8%);
+    }
+    .classification strong { color: var(--mint); }
+    .metric-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .metric {
+      min-height: 98px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel-soft);
+    }
+    .metric-label { display: block; color: var(--muted); font-size: .8rem; }
+    .metric-value { display: block; margin-top: 5px; font-size: 1.3rem; font-weight: 750; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; margin-top: 12px; border-collapse: collapse; white-space: nowrap; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: right; }
+    th { color: var(--muted); font-size: .78rem; font-weight: 700; }
+    th:first-child, td:first-child { text-align: left; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .gantt { display: flex; min-height: 74px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: #101923; }
+    .gantt-block {
+      display: flex;
+      min-width: 44px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 7px 3px;
+      border-right: 1px solid rgb(16 25 35 / 65%);
+      color: #0c211d;
+      font-size: .78rem;
+      font-weight: 800;
+      text-align: center;
+    }
+    .gantt-block small { font-size: .68rem; font-weight: 650; }
+    .gantt-block.idle { background: #34434c; color: #e6eeee; }
+    .algorithm-grid, .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .algorithm-card, .info-card { padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); }
+    .algorithm-card p, .info-card p { margin-bottom: 0; color: var(--muted); font-size: .92rem; }
+    .algorithm-card:nth-child(1) { border-top: 3px solid var(--mint); }
+    .algorithm-card:nth-child(2) { border-top: 3px solid var(--blue); }
+    .algorithm-card:nth-child(3) { border-top: 3px solid var(--gold); }
+    .algorithm-card:nth-child(4) { border-top: 3px solid var(--rose); }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+    .step { padding: 14px; border: 1px solid var(--border); border-radius: 11px; color: var(--muted); }
+    .step b { display: block; margin-bottom: 5px; color: var(--text); }
+    .policy-map { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+    .policy { padding: 12px; border-radius: 10px; background: var(--panel-soft); }
+    .policy strong { display: block; color: var(--mint); }
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .benchmark-refresh { margin: 4px 0 12px; }
+    .benchmark-best {
+      padding: 3px 6px;
+      border: 1px solid rgb(120 224 189 / 55%);
+      border-radius: 6px;
+      background: rgb(120 224 189 / 12%);
+      color: var(--mint);
+      font-weight: 750;
+    }
+    .best-tag { display: inline-block; margin-left: 5px; color: var(--mint); font-size: .72rem; font-weight: 750; }
+    .status { min-height: 24px; color: var(--muted); font-size: .85rem; }
+    .status.error { color: var(--gold); }
+    .notice { padding: 13px 15px; border-left: 3px solid var(--gold); border-radius: 6px; background: rgb(255 210 123 / 8%); color: var(--muted); }
+    .limitations { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .limitations ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); }
+    footer { padding: 24px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: .88rem; }
+    @media (max-width: 850px) {
+      .controls { grid-template-columns: repeat(2, 1fr); }
+      .metric-grid { grid-template-columns: repeat(3, 1fr); }
+      .algorithm-grid, .steps { grid-template-columns: repeat(2, 1fr); }
+      .nav-links { gap: 10px; }
+    }
+    @media (max-width: 560px) {
+      .wrap { width: min(100% - 24px, 1120px); }
+      .hero { padding-top: 48px; }
+      .nav { align-items: flex-start; flex-direction: column; justify-content: center; padding: 10px 0; }
+      .nav-links { gap: 8px 14px; }
+      .controls, .metric-grid, .algorithm-grid, .steps, .policy-map, .charts, .limitations { grid-template-columns: 1fr; }
+      .panel { padding: 16px; }
+      .metric { min-height: auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap nav">
+      <a class="brand" href="#home">ADAPTIVE <span>SCHEDULER</span></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#demo">Simulator</a>
+        <a href="#algorithms">Algorithms</a>
+        <a href="#adaptive">Adaptive policy</a>
+        <a href="#results">Results</a>
+        <a href="#limitations">Limitations</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="home" class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Operating Systems · BCSE303P</div>
+      <h1>Adaptive CPU scheduling, made visible.</h1>
+      <p class="lead">Explore four classic scheduling policies, inspect each simulated process, and see how a workload classifier chooses a policy for synthetic workloads.</p>
+      <p class="identity">Aditya Avva (24BAI0048) · Ribhav Aggarwal (24BAI0246)</p>
+      <div class="hero-actions">
+        <a class="button primary" href="#demo">Open the interactive demo</a>
+        <a class="button" href="#results">View benchmark charts</a>
+      </div>
+    </section>
+
+    <section id="demo">
+      <div class="eyebrow">Browser demonstration</div>
+      <h2>Run a scheduling scenario</h2>
+      <p class="section-intro">Choose a generated workload and a policy. The browser computes this demonstration locally; it does not call the Python scheduler or modify your operating system. Processes use multiple CPU bursts and, where applicable, block for simulated I/O before returning to the ready queue.</p>
+      <div class="panel">
+        <div class="controls">
+          <label for="workload">Synthetic workload
+            <select id="workload">
+              <option>CPU-intensive</option>
+              <option>I/O-intensive</option>
+              <option>Mixed</option>
+            </select>
+          </label>
+          <label for="algorithm">Scheduling policy
+            <select id="algorithm">
+              <option>Adaptive policy</option>
+              <option>FCFS</option>
+              <option>SJF</option>
+              <option>Priority</option>
+              <option>Round Robin</option>
+            </select>
+          </label>
+          <label for="process-count">Process count
+            <input id="process-count" type="number" min="1" max="30" value="8">
+          </label>
+          <label for="quantum">Round Robin quantum
+            <input id="quantum" type="number" min="1" value="4">
+          </label>
+          <button id="run-demo" class="button primary control-button" type="button">Run demo</button>
+        </div>
+        <p class="sim-note">Browser demo seed: <span id="seed-label">42</span> (fixed for repeatability). The generated process set is separate from the Python benchmark.</p>
+        <div id="sim-error" class="status error" role="alert"></div>
+        <div class="result-head">
+          <div>
+            <h3 id="scenario-title">Scenario results</h3>
+            <p id="scenario-subtitle" class="small-note"></p>
+          </div>
+          <div class="classification" aria-live="polite">
+            <div>Classifier: <strong id="predicted-workload">—</strong></div>
+            <div>Selected policy: <strong id="selected-policy">—</strong></div>
+          </div>
+        </div>
+        <div class="metric-grid" aria-label="Scheduling summary metrics">
+          <div class="metric"><span class="metric-label">Average waiting</span><strong id="avg-waiting" class="metric-value">—</strong></div>
+          <div class="metric"><span class="metric-label">Average turnaround</span><strong id="avg-turnaround" class="metric-value">—</strong></div>
+          <div class="metric"><span class="metric-label">Average response</span><strong id="avg-response" class="metric-value">—</strong></div>
+          <div class="metric"><span class="metric-label">Throughput</span><strong id="throughput" class="metric-value">—</strong></div>
+          <div class="metric"><span class="metric-label">CPU utilization</span><strong id="cpu-utilization" class="metric-value">—</strong></div>
+        </div>
+        <div class="metric-grid" aria-label="Workload and CPU activity statistics">
+          <div class="metric"><span class="metric-label">Total CPU service</span><strong id="total-cpu-service" class="metric-value">—</strong></div>
+          <div class="metric"><span class="metric-label">Total I/O wait</span><strong id="total-io-wait" class="metric-value">—</strong></div>
+          <div class="metric"><span class="metric-label">Average CPU burst</span><strong id="avg-cpu-burst" class="metric-value">—</strong></div>
+          <div class="metric"><span class="metric-label">CPU bursts/process</span><strong id="cpu-bursts-per-process" class="metric-value">—</strong></div>
+          <div class="metric"><span class="metric-label">CPU busy time</span><strong id="cpu-busy-time" class="metric-value">—</strong></div>
+          <div class="metric"><span class="metric-label">CPU idle time</span><strong id="cpu-idle-time" class="metric-value">—</strong></div>
+        </div>
+        <div class="comparison-panel">
+          <h3>Fair I/O comparison: SJF vs Round Robin</h3>
+          <p class="small-note">This uses one deterministic six-process I/O-intensive input for both policies. The configured quantum controls Round Robin; no winner is assumed.</p>
+          <button id="compare-io" class="button" type="button">Compare identical I/O workload</button>
+          <div id="io-comparison-status" class="status" role="status"></div>
+          <div id="io-comparison-results"></div>
+          <div id="io-comparison-gantts"></div>
+        </div>
+        <h3 style="margin-top:24px">Gantt chart <span class="small-note">(time units)</span></h3>
+        <div id="gantt" class="gantt" aria-label="CPU schedule timeline"></div>
+        <div id="gantt-labels" class="small-note" style="display:flex;justify-content:space-between;margin-top:6px"></div>
+        <h3 style="margin-top:24px">Process metrics</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Process</th><th>Arrival</th><th>CPU bursts</th><th>I/O waits</th><th>Priority</th><th>State</th><th>Completion</th><th>Waiting</th><th>Turnaround</th><th>Response</th></tr></thead>
+            <tbody id="process-rows"></tbody>
+          </table>
+        </div>
+        <h3 style="margin-top:24px">Process event timelines</h3>
+        <div id="io-timeline" class="table-scroll"></div>
+      </div>
+    </section>
+
+    <section id="algorithms">
+      <div class="eyebrow">Scheduling fundamentals</div>
+      <h2>Four policies, different trade-offs</h2>
+      <p class="section-intro">Processes may alternate between CPU bursts and blocked I/O waits. SJF and Priority are non-preemptive per CPU burst; Round Robin is preemptive at quantum boundaries.</p>
+      <div class="algorithm-grid">
+        <article class="algorithm-card"><h3>FCFS</h3><p>First Come, First Served runs processes in arrival order. It is straightforward, but a long job can make later jobs wait.</p></article>
+        <article class="algorithm-card"><h3>SJF</h3><p>Shortest Job First selects the shortest burst among processes that have arrived. This version is non-preemptive and may delay long jobs.</p></article>
+        <article class="algorithm-card"><h3>Priority</h3><p>Selects the available process with the smallest numeric priority value. This version is non-preemptive; starvation is possible in general.</p></article>
+        <article class="algorithm-card"><h3>Round Robin</h3><p>Shares CPU time in turns up to a configurable quantum. Smaller quanta can improve early response but add more scheduling switches in real systems.</p></article>
+      </div>
+    </section>
+
+    <section id="adaptive">
+      <div class="eyebrow">Explainable selection</div>
+      <h2>From workload features to a policy</h2>
+      <p class="section-intro">The adaptive demonstration extracts summary features, classifies the workload using nearest-centroid distance, then applies a fixed, visible mapping. It demonstrates policy selection—not proof that the selected policy is best.</p>
+      <div class="panel">
+        <div class="steps">
+          <div class="step"><b>1 · Generate</b>Make deterministic synthetic processes with arrivals, CPU bursts, and priorities.</div>
+          <div class="step"><b>2 · Extract</b>Measure mean CPU burst, burst variability, short-burst fraction, and the ratio of simulated I/O wait to CPU service.</div>
+          <div class="step"><b>3 · Classify</b>Compare the feature vector to labelled synthetic class centroids.</div>
+          <div class="step"><b>4 · Select</b>Map the predicted workload class to a scheduling policy.</div>
+        </div>
+        <div class="policy-map">
+          <div class="policy"><strong>CPU-intensive</strong>SJF</div>
+          <div class="policy"><strong>I/O-intensive</strong>Round Robin</div>
+          <div class="policy"><strong>Mixed</strong>Priority</div>
+        </div>
+        <p class="small-note" style="margin-top:14px">The browser keeps a small standalone nearest-centroid model for this visual demo. It does not import, invoke, or stay synchronized with Python at runtime. The Python benchmark is the authoritative implementation and uses its own seeded training procedure.</p>
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="eyebrow">Python benchmark exports</div>
+      <h2>Compare generated results</h2>
+      <p class="section-intro">These comparison charts are loaded from <code>results\benchmark_results.csv</code> when this page is served from the project folder. They are separate from the interactive browser scenario above.</p>
+      <label for="benchmark-scenario">Benchmark scenario
+        <select id="benchmark-scenario" disabled>
+          <option>Loading scenarios…</option>
+        </select>
+      </label>
+      <button id="refresh-benchmark" class="button benchmark-refresh" type="button">Refresh benchmark results</button>
+      <div class="status" id="csv-status" role="status">Loading benchmark CSV…</div>
+      <article class="panel">
+        <h3 id="benchmark-scenario-title">Selected scenario inputs</h3>
+        <p class="small-note" id="benchmark-scenario-description"></p>
+        <div id="benchmark-processes"></div>
+      </article>
+      <div class="charts">
+        <article class="panel">
+          <h3>Average waiting time</h3>
+          <p class="small-note" id="waiting-config"></p>
+          <div id="waiting-chart"></div>
+        </article>
+        <article class="panel">
+          <h3>Average turnaround time</h3>
+          <p class="small-note" id="turnaround-config"></p>
+          <div id="turnaround-chart"></div>
+        </article>
+        <article class="panel">
+          <h3>Highest-priority response time</h3>
+          <p class="small-note">Priority means the smallest numeric priority; all processes tied at that value are included.</p>
+          <div id="priority-response-chart"></div>
+        </article>
+      </div>
+      <p class="notice" style="margin-top:14px">If CSV loading fails, this section shows an error instead of presenting old chart values. Start the local server with <code>py -m http.server 8000</code> in the project folder and visit <code>http://localhost:8000/website/</code>. After running the Python benchmark, use the refresh button to load its latest CSV.</p>
+    </section>
+
+    <section id="limitations">
+      <div class="eyebrow">Scope and next steps</div>
+      <h2>What this project does—and does not—model</h2>
+      <div class="limitations">
+        <article class="info-card">
+          <h3>Current limitations</h3>
+          <ul>
+            <li>Both demos are simulations; neither changes the Windows/Linux kernel or measures live machine scheduling.</li>
+            <li>The browser demo models I/O waits as simulated blocked intervals; it does not perform real device I/O or change the operating-system kernel.</li>
+            <li>The classifier is a small educational nearest-centroid model trained on synthetic labels. No measured accuracy is claimed.</li>
+            <li>Results depend on generated inputs and configuration; adaptive selection is not guaranteed to beat every fixed policy.</li>
+          </ul>
+        </article>
+        <article class="info-card">
+          <h3>Possible future work</h3>
+          <ul>
+            <li>Model explicit I/O wait and alternating CPU/I/O bursts.</li>
+            <li>Evaluate classification on held-out workloads and report a confusion matrix.</li>
+            <li>Study fairness, starvation, context-switch overhead, and multiple random seeds.</li>
+            <li>Compare adaptive selection against every fixed policy using the same inputs.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">BCSE303P · Adaptive CPU Scheduler · Educational simulation only · No kernel changes</div>
+  </footer>
+
+  <script>
+    "use strict";
+    const WORKLOADS = ["CPU-intensive", "I/O-intensive", "Mixed"];
+    const ALGORITHMS = ["FCFS", "SJF", "Priority", "Round Robin"];
+    const POLICY = {
+      "CPU-intensive": "SJF",
+      "I/O-intensive": "Round Robin",
+      "Mixed": "Priority"
+    };
+    const CLASSIFIER = {
+      centroids: {
+        "I/O-intensive": [2.5, 1.2, 1, 1.8],
+        "CPU-intensive": [14, 3.6, 0.05, 0.05],
+        "Mixed": [7.5, 4.2, 0.45, 0.55]
+      },
+      scales: [14, 5, 1, 2]
+    };
+    const COLORS = ["#78e0bd", "#80bfff", "#ffd27b", "#ff9a9a", "#c5a5ff", "#ffad80"];
+    let benchmarkRows = [];
+
+    function seededRandom(seed) {
+      let state = seed >>> 0;
+      return function () {
+        state += 0x6D2B79F5;
+        let value = state;
+        value = Math.imul(value ^ (value >>> 15), value | 1);
+        value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+        return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function makeWorkload(kind, count, seed) {
+      const random = seededRandom(seed);
+      const processes = [];
+      for (let index = 0; index < count; index += 1) {
+        const arrival = kind === "I/O-intensive"
+          ? Math.floor(random() * 21)
+          : Math.floor(random() * (Math.max(1, Math.floor(count / 3)) + 1));
+        let cpuBursts;
+        let ioWaits;
+        if (kind === "CPU-intensive") {
+          cpuBursts = [8 + Math.floor(random() * 13)];
+          if (random() < 0.3) cpuBursts.push(8 + Math.floor(random() * 13));
+          ioWaits = cpuBursts.slice(0, -1).map(() => 1 + Math.floor(random() * 3));
+        } else if (kind === "I/O-intensive") {
+          const burstCount = 3 + Math.floor(random() * 2);
+          cpuBursts = Array.from({ length: burstCount }, (_, burstIndex) =>
+            burstIndex === 0 ? 1 : 1 + Math.floor(random() * 2)
+          );
+          ioWaits = cpuBursts.slice(0, -1).map(() => 10 + Math.floor(random() * 6));
+        } else {
+          const burstCount = 2 + Math.floor(random() * 2);
+          cpuBursts = Array.from({ length: burstCount }, (_, burstIndex) =>
+            burstIndex % 2 === 0 ? 5 + Math.floor(random() * 12) : 1 + Math.floor(random() * 5)
+          );
+          ioWaits = cpuBursts.slice(0, -1).map(() => 2 + Math.floor(random() * 5));
+        }
+        const priority = 1 + Math.floor(random() * 5);
+        processes.push({ pid: `P${index + 1}`, arrival, cpuBursts, ioWaits, priority, state: "New" });
+      }
+      return processes.sort((a, b) => a.arrival - b.arrival || a.pid.localeCompare(b.pid, undefined, { numeric: true }));
+    }
+
+    function makeIoComparisonWorkload() {
+      return [
+        { pid: "C1", arrival: 0, cpuBursts: [3, 1, 2], ioWaits: [12, 12], priority: 3, state: "New" },
+        { pid: "C2", arrival: 0, cpuBursts: [1, 2, 1], ioWaits: [10, 14], priority: 2, state: "New" },
+        { pid: "C3", arrival: 0, cpuBursts: [2, 1, 2], ioWaits: [11, 13], priority: 4, state: "New" },
+        { pid: "C4", arrival: 1, cpuBursts: [3, 1, 1], ioWaits: [9, 12], priority: 1, state: "New" },
+        { pid: "C5", arrival: 2, cpuBursts: [1, 2, 1], ioWaits: [13, 10], priority: 5, state: "New" },
+        { pid: "C6", arrival: 3, cpuBursts: [2, 1, 2], ioWaits: [8, 14], priority: 3, state: "New" }
+      ];
+    }
+
+    function extractFeatures(processes) {
+      const bursts = processes.flatMap(process => process.cpuBursts);
+      const totalCpu = bursts.reduce((sum, burst) => sum + burst, 0);
+      const totalIo = processes.reduce(
+        (sum, process) => sum + process.ioWaits.reduce((inner, wait) => inner + wait, 0), 0
+      );
+      const mean = bursts.reduce((sum, burst) => sum + burst, 0) / bursts.length;
+      const variance = bursts.reduce((sum, burst) => sum + (burst - mean) ** 2, 0) / bursts.length;
+      const shortRatio = bursts.filter(burst => burst <= 5).length / bursts.length;
+      const ioWaitRatio = totalCpu ? totalIo / totalCpu : 0;
+      return [mean, Math.sqrt(variance), shortRatio, ioWaitRatio];
+    }
+
+    function classify(features) {
+      let bestLabel = null;
+      let bestDistance = Infinity;
+      for (const [label, centroid] of Object.entries(CLASSIFIER.centroids)) {
+        const distance = features.reduce((sum, value, index) => {
+          return sum + ((value - centroid[index]) / CLASSIFIER.scales[index]) ** 2;
+        }, 0);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestLabel = label;
+        }
+      }
+      return bestLabel;
+    }
+
+    function simulate(input, algorithm, quantum) {
+      if (!Number.isInteger(quantum) || quantum < 1) throw new Error("Round Robin quantum must be a positive integer.");
+      for (const process of input) {
+        if (!Number.isInteger(process.arrival) || process.arrival < 0) {
+          throw new Error("Arrival times must be non-negative integers.");
+        }
+        if (!Array.isArray(process.cpuBursts) || !process.cpuBursts.length ||
+            process.cpuBursts.some(burst => !Number.isInteger(burst) || burst < 1)) {
+          throw new Error("CPU bursts must be a non-empty array of positive integers.");
+        }
+        if (!Array.isArray(process.ioWaits) || process.ioWaits.length !== process.cpuBursts.length - 1 ||
+            process.ioWaits.some(wait => !Number.isInteger(wait) || wait < 1)) {
+          throw new Error("I/O waits must contain one positive integer between each pair of CPU bursts.");
+        }
+      }
+      const processes = input.map(process => ({
+        ...process,
+        cpuBursts: [...process.cpuBursts],
+        ioWaits: [...process.ioWaits],
+        state: "New",
+        burstIndex: 0,
+        remaining: process.cpuBursts[0],
+        readySince: process.arrival,
+        readyWaiting: 0,
+        readyIntervals: [],
+        firstStart: null,
+        completion: null,
+        ioIntervals: [],
+        executionIntervals: []
+      }));
+      const byPid = new Map(processes.map(process => [process.pid, process]));
+      const pendingArrivals = [...processes].sort((a, b) => a.arrival - b.arrival || a.pid.localeCompare(b.pid, undefined, { numeric: true }));
+      const ready = [];
+      const timeline = [];
+      const ioEvents = [];
+      let arrivalIndex = 0;
+      let time = Math.min(...processes.map(process => process.arrival));
+      const addReadyEvents = () => {
+        while (arrivalIndex < pendingArrivals.length && pendingArrivals[arrivalIndex].arrival <= time) {
+          const process = pendingArrivals[arrivalIndex++];
+          process.state = "Ready";
+          process.readySince = process.arrival;
+          ready.push(process);
+        }
+        for (const event of ioEvents.filter(event => !event.done && event.end <= time)) {
+          event.done = true;
+          const process = event.process;
+          process.state = "Ready";
+          process.readySince = event.end;
+          ready.push(process);
+        }
+      };
+      const chooseReady = () => {
+        if (algorithm === "FCFS" || algorithm === "Round Robin") return ready.shift();
+        ready.sort((a, b) => {
+          const primary = algorithm === "SJF" ? a.remaining - b.remaining : a.priority - b.priority;
+          return primary || a.readySince - b.readySince || a.pid.localeCompare(b.pid, undefined, { numeric: true });
+        });
+        return ready.shift();
+      };
+      addReadyEvents();
+      while (ready.length || arrivalIndex < pendingArrivals.length || ioEvents.some(event => !event.done)) {
+        if (!ready.length) {
+          const nextArrival = arrivalIndex < pendingArrivals.length ? pendingArrivals[arrivalIndex].arrival : Infinity;
+          const nextIo = Math.min(...ioEvents.filter(event => !event.done).map(event => event.end), Infinity);
+          time = Math.min(nextArrival, nextIo);
+          addReadyEvents();
+          continue;
+        }
+        const process = chooseReady();
+        process.readyIntervals.push({ start: process.readySince, end: time });
+        process.readyWaiting += time - process.readySince;
+        process.state = "Running";
+        if (process.firstStart === null) process.firstStart = time;
+        const duration = algorithm === "Round Robin" ? Math.min(quantum, process.remaining) : process.remaining;
+        const interval = { start: time, end: time + duration, pid: process.pid };
+        timeline.push(interval);
+        process.executionIntervals.push(interval);
+        time += duration;
+        process.remaining -= duration;
+        addReadyEvents();
+        if (process.remaining > 0) {
+          process.state = "Ready";
+          process.readySince = time;
+          ready.push(process);
+        } else if (process.burstIndex < process.cpuBursts.length - 1) {
+          const ioDuration = process.ioWaits[process.burstIndex];
+          const ioInterval = { pid: process.pid, start: time, end: time + ioDuration };
+          process.ioIntervals.push(ioInterval);
+          ioEvents.push({ process, end: ioInterval.end, done: false });
+          process.burstIndex += 1;
+          process.remaining = process.cpuBursts[process.burstIndex];
+          process.state = "Blocked";
+        } else {
+          process.state = "Completed";
+          process.completion = time;
+        }
+      }
+      const start = Math.min(...processes.map(process => process.arrival));
+      const duration = time - start;
+      const totalCpu = processes.reduce((sum, process) => sum + process.cpuBursts.reduce((inner, burst) => inner + burst, 0), 0);
+      const totalIo = processes.reduce((sum, process) => sum + process.ioWaits.reduce((inner, wait) => inner + wait, 0), 0);
+      const cpuBusy = timeline.reduce((sum, interval) => sum + interval.end - interval.start, 0);
+      const rows = processes.map(process => ({
+        ...process,
+        cpuBursts: process.cpuBursts.join(" + "),
+        ioWaits: process.ioWaits.length ? process.ioWaits.join(" + ") : "—",
+        turnaround: process.completion - process.arrival,
+        waiting: process.readyWaiting,
+        response: process.firstStart - process.arrival
+      }));
+      return {
+        rows,
+        timeline,
+        ioIntervals: processes.flatMap(process => process.ioIntervals),
+        metrics: {
+          waiting: rows.reduce((sum, row) => sum + row.waiting, 0) / rows.length,
+          turnaround: rows.reduce((sum, row) => sum + row.turnaround, 0) / rows.length,
+          response: rows.reduce((sum, row) => sum + row.response, 0) / rows.length,
+          throughput: rows.length / duration,
+          utilization: 100 * totalCpu / duration,
+          totalCpu,
+          totalIo,
+          averageCpuBurst: totalCpu / processes.reduce((sum, process) => sum + process.cpuBursts.length, 0),
+          cpuBurstsPerProcess: processes.reduce((sum, process) => sum + process.cpuBursts.length, 0) / processes.length,
+          cpuBusy,
+          cpuIdle: duration - cpuBusy,
+          start,
+          end: time
+        }
+      };
+    }
+
+    function renderSimulation() {
+      const error = document.getElementById("sim-error");
+      error.textContent = "";
+      const count = Number(document.getElementById("process-count").value);
+      const quantum = Number(document.getElementById("quantum").value);
+      if (!Number.isInteger(count) || count < 1 || count > 30) {
+        error.textContent = "Process count must be an integer from 1 to 30.";
+        return;
+      }
+      if (!Number.isInteger(quantum) || quantum < 1) {
+        error.textContent = "Round Robin quantum must be a positive integer.";
+        return;
+      }
+      const workload = document.getElementById("workload").value;
+      const processes = makeWorkload(workload, count, 42);
+      const predicted = classify(extractFeatures(processes));
+      const policy = POLICY[predicted];
+      const selected = document.getElementById("algorithm").value;
+      const algorithm = selected === "Adaptive policy" ? policy : selected;
+      const result = simulate(processes, algorithm, quantum);
+      document.getElementById("seed-label").textContent = "42";
+      document.getElementById("scenario-title").textContent = `${workload} · ${algorithm}`;
+      document.getElementById("scenario-subtitle").textContent =
+        `${count} processes · quantum ${quantum} · simulated workload window ${result.metrics.start}–${result.metrics.end}`;
+      document.getElementById("predicted-workload").textContent = predicted;
+      document.getElementById("selected-policy").textContent =
+        selected === "Adaptive policy" ? `${policy} (used)` : `${policy} (classifier choice); ${algorithm} (simulated)`;
+      document.getElementById("avg-waiting").textContent = result.metrics.waiting.toFixed(2);
+      document.getElementById("avg-turnaround").textContent = result.metrics.turnaround.toFixed(2);
+      document.getElementById("avg-response").textContent = result.metrics.response.toFixed(2);
+      document.getElementById("throughput").textContent = result.metrics.throughput.toFixed(3);
+      document.getElementById("cpu-utilization").textContent = `${result.metrics.utilization.toFixed(1)}%`;
+      document.getElementById("total-cpu-service").textContent = `${result.metrics.totalCpu} units`;
+      document.getElementById("total-io-wait").textContent = `${result.metrics.totalIo} units`;
+      document.getElementById("avg-cpu-burst").textContent = result.metrics.averageCpuBurst.toFixed(2);
+      document.getElementById("cpu-bursts-per-process").textContent = result.metrics.cpuBurstsPerProcess.toFixed(2);
+      document.getElementById("cpu-busy-time").textContent = `${result.metrics.cpuBusy} units`;
+      document.getElementById("cpu-idle-time").textContent = `${result.metrics.cpuIdle} units`;
+      renderGantt(result.timeline, result.metrics.start, result.metrics.end);
+      renderRows(result.rows);
+      renderProcessTimelines(result.rows);
+    }
+
+    function renderGantt(timeline, start, end) {
+      const gantt = document.getElementById("gantt");
+      gantt.replaceChildren();
+      let cursor = start;
+      timeline.forEach((segment, index) => {
+        if (segment.start > cursor) addGanttBlock(gantt, "Idle", cursor, segment.start, true, index);
+        addGanttBlock(gantt, segment.pid, segment.start, segment.end, false, index);
+        cursor = segment.end;
+      });
+      const labels = document.getElementById("gantt-labels");
+      labels.replaceChildren();
+      for (const value of [start, end]) {
+        const label = document.createElement("span");
+        label.textContent = `t = ${value}`;
+        labels.append(label);
+      }
+      gantt.setAttribute("aria-label", `CPU Gantt chart from time ${start} to ${end}`);
+    }
+
+    function addGanttBlock(container, label, start, end, idle, index) {
+      const block = document.createElement("div");
+      block.className = `gantt-block${idle ? " idle" : ""}`;
+      block.style.flex = `${end - start} 1 0`;
+      if (!idle) block.style.backgroundColor = COLORS[index % COLORS.length];
+      block.title = `${label}: ${start} to ${end}`;
+      block.innerHTML = `<span>${label}</span><small>${start}–${end}</small>`;
+      container.append(block);
+    }
+
+    function renderRows(rows) {
+      const body = document.getElementById("process-rows");
+      body.replaceChildren();
+      for (const row of rows) {
+        const tr = document.createElement("tr");
+        for (const key of ["pid", "arrival", "cpuBursts", "ioWaits", "priority", "state", "completion", "waiting", "turnaround", "response"]) {
+          const td = document.createElement("td");
+          td.textContent = String(row[key]);
+          tr.append(td);
+        }
+        body.append(tr);
+      }
+    }
+
+    function renderProcessTimelines(rows) {
+      const target = document.getElementById("io-timeline");
+      target.replaceChildren();
+      const table = document.createElement("table");
+      table.innerHTML = "<thead><tr><th>Process</th><th>CPU execution intervals</th><th>Ready-queue intervals</th><th>Blocked I/O intervals</th></tr></thead>";
+      const body = document.createElement("tbody");
+      for (const row of rows) {
+        const tr = document.createElement("tr");
+        const execution = row.executionIntervals.map(interval => `${interval.start}–${interval.end}`).join(", ");
+        const ready = row.readyIntervals.map(interval => `${interval.start}–${interval.end}`).join(", ") || "—";
+        const blocked = row.ioIntervals.length
+          ? row.ioIntervals.map(interval => `${interval.start}–${interval.end}`).join(", ")
+          : "—";
+        for (const value of [row.pid, execution, ready, blocked]) {
+          const td = document.createElement("td");
+          td.textContent = value;
+          tr.append(td);
+        }
+        body.append(tr);
+      }
+      table.append(body);
+      target.append(table);
+    }
+
+    function renderIoComparison() {
+      const status = document.getElementById("io-comparison-status");
+      const target = document.getElementById("io-comparison-results");
+      const ganttTarget = document.getElementById("io-comparison-gantts");
+      target.replaceChildren();
+      ganttTarget.replaceChildren();
+      const quantum = Number(document.getElementById("quantum").value);
+      if (!Number.isInteger(quantum) || quantum < 1) {
+        status.className = "status error";
+        status.textContent = "Round Robin quantum must be a positive integer.";
+        return;
+      }
+      const input = makeIoComparisonWorkload();
+      const sjf = simulate(input, "SJF", quantum);
+      const roundRobin = simulate(input, "Round Robin", quantum);
+      const rows = [
+        ["SJF", sjf.metrics],
+        ["Round Robin", roundRobin.metrics]
+      ];
+      const table = document.createElement("table");
+      table.innerHTML = "<thead><tr><th>Policy</th><th>Avg waiting</th><th>Avg turnaround</th><th>Avg response</th><th>CPU utilization</th></tr></thead>";
+      const body = document.createElement("tbody");
+      for (const [algorithm, metrics] of rows) {
+        const tr = document.createElement("tr");
+        for (const value of [
+          algorithm,
+          metrics.waiting.toFixed(2),
+          metrics.turnaround.toFixed(2),
+          metrics.response.toFixed(2),
+          `${metrics.utilization.toFixed(1)}%`
+        ]) {
+          const td = document.createElement("td");
+          td.textContent = value;
+          tr.append(td);
+        }
+        body.append(tr);
+      }
+      table.append(body);
+      const inputs = document.createElement("p");
+      inputs.className = "small-note";
+      inputs.textContent = `Same input for both policies: ${input.length} processes, ${input.reduce((sum, process) => sum + process.cpuBursts.length, 0)} CPU bursts, quantum ${quantum}.`;
+      target.append(inputs, table);
+      for (const [algorithm, result] of [["SJF", sjf], ["Round Robin", roundRobin]]) {
+        const heading = document.createElement("h4");
+        heading.textContent = `${algorithm} CPU Gantt`;
+        const gantt = document.createElement("div");
+        gantt.className = "gantt";
+        gantt.setAttribute("aria-label", `${algorithm} comparison CPU Gantt chart`);
+        let cursor = result.metrics.start;
+        result.timeline.forEach((segment, index) => {
+          if (segment.start > cursor) addGanttBlock(gantt, "Idle", cursor, segment.start, true, index);
+          addGanttBlock(gantt, segment.pid, segment.start, segment.end, false, index);
+          cursor = segment.end;
+        });
+        ganttTarget.append(heading, gantt);
+      }
+      status.className = "status";
+      status.textContent = "Measured from identical deterministic process inputs; the selected policy is not assumed to be better.";
+    }
+
+    function parseCsv(text) {
+      const lines = text.trim().split(/\r?\n/);
+      if (lines.length < 2) throw new Error("CSV contains no benchmark rows.");
+      return lines.map(line => {
+        const cells = [];
+        let cell = "";
+        let quoted = false;
+        for (let index = 0; index < line.length; index += 1) {
+          const char = line[index];
+          if (char === '"' && quoted && line[index + 1] === '"') {
+            cell += '"';
+            index += 1;
+          } else if (char === '"') {
+            quoted = !quoted;
+          } else if (char === "," && !quoted) {
+            cells.push(cell);
+            cell = "";
+          } else {
+            cell += char;
+          }
+        }
+        cells.push(cell);
+        return cells;
+      }).map((row, index, all) => index === 0 ? row : Object.fromEntries(all[0].map((key, column) => [key, row[column]])));
+    }
+
+    function renderBenchmarkChart(rows, metric, targetId) {
+      const target = document.getElementById(targetId);
+      target.replaceChildren();
+      const workloads = [...new Set(rows.map(row => row.actual_workload))];
+      for (const workload of workloads) {
+        const group = document.createElement("div");
+        group.style.margin = "12px 0";
+        const heading = document.createElement("strong");
+        heading.textContent = workload;
+        group.append(heading);
+        const subset = rows.filter(row => row.actual_workload === workload);
+        if (!subset.length) throw new Error(`CSV has no rows for workload "${workload}".`);
+        const values = subset.map(row => Number(row[metric]));
+        if (values.some(value => !Number.isFinite(value))) {
+          throw new Error(`CSV has an invalid ${metric} value for workload "${workload}".`);
+        }
+        const max = Math.max(1, ...values);
+        const best = Math.min(...values);
+        for (const algorithm of ALGORITHMS) {
+          const row = subset.find(item => item.algorithm === algorithm);
+          if (!row) continue;
+          const valueNumber = Number(row[metric]);
+          const isBest = valueNumber === best;
+          const line = document.createElement("div");
+          line.style.display = "grid";
+          line.style.gridTemplateColumns = "112px 1fr 54px";
+          line.style.alignItems = "center";
+          line.style.gap = "8px";
+          line.style.margin = "5px 0";
+          const name = document.createElement("span");
+          name.className = "small-note";
+          name.textContent = algorithm;
+          if (isBest) {
+            name.classList.add("benchmark-best");
+            name.setAttribute("aria-label", `${algorithm}, lowest ${metric} for ${workload}`);
+          }
+          const track = document.createElement("div");
+          track.style.height = "11px";
+          track.style.overflow = "hidden";
+          track.style.borderRadius = "8px";
+          track.style.background = "#101923";
+          const bar = document.createElement("div");
+          bar.style.width = `${Math.max(0, valueNumber / max * 100)}%`;
+          bar.style.height = "100%";
+          bar.style.background = isBest ? "var(--mint)" : COLORS[ALGORITHMS.indexOf(algorithm)];
+          if (isBest) bar.setAttribute("aria-label", "Lowest result for this workload");
+          track.append(bar);
+          const value = document.createElement("span");
+          value.className = `small-note${isBest ? " benchmark-best" : ""}`;
+          value.style.textAlign = "right";
+          value.textContent = valueNumber.toFixed(1);
+          if (isBest) {
+            const tag = document.createElement("span");
+            tag.className = "best-tag";
+            tag.textContent = "BEST";
+            tag.setAttribute("aria-label", "Lowest average for this workload");
+            value.append(tag);
+          }
+          line.append(name, track, value);
+          group.append(line);
+        }
+        target.append(group);
+      }
+    }
+
+    function renderBenchmarkProcesses(rows) {
+      const processTarget = document.getElementById("benchmark-processes");
+      processTarget.replaceChildren();
+      const first = rows[0];
+      document.getElementById("benchmark-scenario-title").textContent =
+        `${first.scenario} · ${first.actual_workload}`;
+      document.getElementById("benchmark-scenario-description").textContent =
+        first.scenario_description || "Hand-designed benchmark input.";
+      let processes;
+      try {
+        processes = JSON.parse(first.process_inputs);
+      } catch (error) {
+        throw new Error("CSV contains invalid process input data.");
+      }
+      const table = document.createElement("table");
+      table.innerHTML = "<thead><tr><th>PID</th><th>Arrival</th><th>Burst</th><th>Priority</th></tr></thead>";
+      const body = document.createElement("tbody");
+      for (const process of processes) {
+        const row = document.createElement("tr");
+        for (const value of [process.pid, process.arrival, process.burst, process.priority]) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.append(cell);
+        }
+        body.append(row);
+      }
+      table.append(body);
+      processTarget.append(table);
+    }
+
+    function benchmarkConfiguration(rows) {
+      const fields = [
+        ["seed", "Seed"],
+        ["process_count", "Processes/category"],
+        ["quantum", "Round Robin quantum"]
+      ];
+      return fields.flatMap(([field, label]) => {
+        const values = [...new Set(rows.map(row => row[field]).filter(value => value !== undefined && value !== ""))];
+        if (!values.length) return [];
+        return [`${label}: ${values.join(", ")}`];
+      }).join(" · ");
+    }
+
+    function renderSelectedBenchmark() {
+      const scenario = document.getElementById("benchmark-scenario").value;
+      const rows = benchmarkRows.filter(row => row.scenario === scenario);
+      if (!rows.length) throw new Error(`No benchmark rows available for scenario "${scenario}".`);
+      renderBenchmarkChart(rows, "avg_waiting", "waiting-chart");
+      renderBenchmarkChart(rows, "avg_turnaround", "turnaround-chart");
+      renderBenchmarkChart(rows, "avg_highest_priority_response", "priority-response-chart");
+      renderBenchmarkProcesses(rows);
+      const configuration = benchmarkConfiguration(rows);
+      document.getElementById("waiting-config").textContent = configuration;
+      document.getElementById("turnaround-config").textContent = configuration;
+    }
+
+    async function loadBenchmark() {
+      const status = document.getElementById("csv-status");
+      const refreshButton = document.getElementById("refresh-benchmark");
+      const scenarioSelect = document.getElementById("benchmark-scenario");
+      const waitingChart = document.getElementById("waiting-chart");
+      const turnaroundChart = document.getElementById("turnaround-chart");
+      const waitingConfig = document.getElementById("waiting-config");
+      const turnaroundConfig = document.getElementById("turnaround-config");
+      const priorityChart = document.getElementById("priority-response-chart");
+      const processTarget = document.getElementById("benchmark-processes");
+      refreshButton.disabled = true;
+      scenarioSelect.disabled = true;
+      status.className = "status";
+      status.textContent = "Loading latest Python benchmark CSV…";
+      waitingChart.replaceChildren();
+      turnaroundChart.replaceChildren();
+      priorityChart.replaceChildren();
+      processTarget.replaceChildren();
+      waitingConfig.textContent = "";
+      turnaroundConfig.textContent = "";
+      try {
+        const response = await fetch("../results/benchmark_results.csv", { cache: "no-store" });
+        if (!response.ok) throw new Error(`CSV request returned HTTP ${response.status}.`);
+        const table = parseCsv(await response.text());
+        const rows = table.slice(1);
+        const expected = ["algorithm", "avg_waiting", "avg_turnaround", "actual_workload"];
+        if (!expected.every(field => table[0].includes(field))) throw new Error("CSV is missing required benchmark columns.");
+        if (!rows.length) throw new Error("CSV contains no benchmark rows.");
+        if (rows.some(row => !ALGORITHMS.includes(row.algorithm))) {
+          throw new Error("CSV contains an unknown scheduling algorithm.");
+        }
+        const rowKeys = new Set();
+        for (const row of rows) {
+          if (!row.scenario) throw new Error("CSV is missing the scenario column.");
+          const key = `${row.scenario}\u0000${row.actual_workload}\u0000${row.algorithm}`;
+          if (rowKeys.has(key)) throw new Error("CSV contains duplicate workload/algorithm rows.");
+          rowKeys.add(key);
+        }
+        const scenarios = [...new Set(rows.map(row => row.scenario))];
+        for (const scenario of scenarios) {
+          const scenarioWorkloads = [...new Set(rows.filter(row => row.scenario === scenario).map(row => row.actual_workload))];
+          for (const workload of scenarioWorkloads) {
+            for (const algorithm of ALGORITHMS) {
+              if (!rowKeys.has(`${scenario}\u0000${workload}\u0000${algorithm}`)) {
+                throw new Error(`CSV is missing ${algorithm} results for ${workload} in ${scenario}.`);
+              }
+            }
+          }
+        }
+        for (const metric of ["avg_waiting", "avg_turnaround", "avg_highest_priority_response"]) {
+          if (rows.some(row => !Number.isFinite(Number(row[metric])))) {
+            throw new Error(`CSV contains an invalid ${metric} value.`);
+          }
+        }
+        benchmarkRows = rows;
+        scenarioSelect.replaceChildren();
+        for (const scenario of scenarios) {
+          const option = document.createElement("option");
+          option.value = scenario;
+          option.textContent = scenario;
+          scenarioSelect.append(option);
+        }
+        scenarioSelect.value = scenarios.includes("baseline") ? "baseline" : scenarios[0];
+        scenarioSelect.disabled = false;
+        renderSelectedBenchmark();
+        status.textContent = `Loaded ${rows.length} rows from the Python benchmark CSV across ${scenarios.length} scenarios.`;
+      } catch (error) {
+        benchmarkRows = [];
+        scenarioSelect.replaceChildren();
+        const option = document.createElement("option");
+        option.textContent = "Unavailable";
+        scenarioSelect.append(option);
+        waitingChart.replaceChildren();
+        turnaroundChart.replaceChildren();
+        priorityChart.replaceChildren();
+        processTarget.replaceChildren();
+        waitingConfig.textContent = "";
+        turnaroundConfig.textContent = "";
+        status.className = "status error";
+        status.setAttribute("role", "alert");
+        status.textContent = `Benchmark CSV could not be loaded: ${error.message}`;
+      } finally {
+        refreshButton.disabled = false;
+        scenarioSelect.disabled = benchmarkRows.length === 0;
+      }
+    }
+
+    document.getElementById("run-demo").addEventListener("click", renderSimulation);
+    document.getElementById("compare-io").addEventListener("click", renderIoComparison);
+    document.getElementById("algorithm").addEventListener("change", renderSimulation);
+    document.getElementById("workload").addEventListener("change", renderSimulation);
+    document.getElementById("refresh-benchmark").addEventListener("click", loadBenchmark);
+    document.getElementById("benchmark-scenario").addEventListener("change", () => {
+      if (benchmarkRows.length) renderSelectedBenchmark();
+    });
+    renderSimulation();
+    loadBenchmark();
+  </script>
+</body>
+</html>
